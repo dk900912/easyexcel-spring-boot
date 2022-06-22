@@ -132,7 +132,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             inputStream = servletRequest.getInputStream();
         }
         EasyExcel.read(inputStream, targetClass, emptyReadListener)
-                .headRowNumber(requestExcel.headRowNumber())
+                .headRowNumber(requestExcel.headRow())
                 .sheet()
                 .doRead();
 
@@ -160,8 +160,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
 
-        Class<?> targetClass = getArgParamOrReturnValueClass(returnType);
-
         ResponseExcel responseExcel = returnType.getMethodAnnotation(ResponseExcel.class);
         ExcelTypeEnum excelType = responseExcel.suffix();
         String name = responseExcel.name();
@@ -180,6 +178,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         } else {
             response.setHeader("Content-disposition",
                     "attachment;filename=" + URLEncoder.encode(name, StandardCharsets.UTF_8.name()) + excelType.getValue());
+            Class<?> targetClass = getArgParamOrReturnValueClass(returnType);
             EasyExcel.write(response.getOutputStream(), targetClass)
                     .excelType(excelType)
                     .sheet(sheet.name())

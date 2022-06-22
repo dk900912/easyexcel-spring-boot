@@ -17,5 +17,5 @@ public @interface RequestExcel {
     /**
      * 导入文件标题行数
      */
-    int headRowNumber() default 1;
+    int headRow() default 1;
 }

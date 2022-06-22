@@ -3,14 +3,21 @@ package io.github.dk900912.easyexcel.core.listener;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
 import com.alibaba.excel.metadata.CellExtra;
+import com.alibaba.excel.read.metadata.holder.ReadRowHolder;
+import com.alibaba.excel.read.metadata.holder.ReadSheetHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author dukui
  */
 public class EmptyReadListener<T> extends AnalysisEventListener<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(EmptyReadListener.class);
 
     /**
      * Thread-safe container is unnecessary
@@ -34,7 +41,17 @@ public class EmptyReadListener<T> extends AnalysisEventListener<T> {
 
     @Override
     public void doAfterAllAnalysed(AnalysisContext context) {
-
+        log.info("0===={===============>");
+        int sheetIndex = Optional.ofNullable(context)
+                .map(AnalysisContext::readSheetHolder)
+                .map(ReadSheetHolder::getSheetNo)
+                .orElse(-1);
+        int totalRow = Optional.ofNullable(context)
+                .map(AnalysisContext::readRowHolder)
+                .map(ReadRowHolder::getRowIndex)
+                .orElse(-1);
+        log.info("sheet-index = {}, total-row = {}", sheetIndex, totalRow);
+        log.info("<===============}====0");
     }
 
     @Override

@@ -19,7 +19,8 @@ import java.util.List;
 /**
  * @author dukui
  */
-public class RequestMappingHandlerAdapterPostProcessor implements BeanPostProcessor, PriorityOrdered, ResourceLoaderAware {
+public class RequestMappingHandlerAdapterPostProcessor implements BeanPostProcessor,
+        PriorityOrdered, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 

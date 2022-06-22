@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = EasyExcelProperties.EASY_EXCEL_PREFIX)
 public class EasyExcelProperties {
 
-    public static final String EASY_EXCEL_PREFIX = "easy-excel";
+    public static final String EASY_EXCEL_PREFIX = "spring.easyexcel";
 
     private Boolean enabled = true;
 
