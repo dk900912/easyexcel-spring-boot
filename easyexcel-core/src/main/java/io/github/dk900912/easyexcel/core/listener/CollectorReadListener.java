@@ -11,18 +11,17 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * @author dukui
  */
-public class EmptyReadListener<T> extends AnalysisEventListener<T> {
+public class CollectorReadListener extends AnalysisEventListener<Object> {
 
-    private static final Logger log = LoggerFactory.getLogger(EmptyReadListener.class);
+    private static final Logger log = LoggerFactory.getLogger(CollectorReadListener.class);
 
-    /**
-     * Thread-safe container is unnecessary
-     */
-    private final List<T> data = new ArrayList<>();
+    private final List<Object> data = new CopyOnWriteArrayList<>();
 
     @Override
     public void onException(Exception exception, AnalysisContext context) throws Exception {
@@ -30,7 +29,7 @@ public class EmptyReadListener<T> extends AnalysisEventListener<T> {
     }
 
     @Override
-    public void invoke(T data, AnalysisContext context) {
+    public void invoke(Object data, AnalysisContext context) {
         this.data.add(data);
     }
 
@@ -59,7 +58,9 @@ public class EmptyReadListener<T> extends AnalysisEventListener<T> {
         return super.hasNext(context);
     }
 
-    public List<T> getData() {
-        return data;
+    public List<List<Object>> groupByHeadClazz() {
+        return new ArrayList<>(data.stream()
+                .collect(Collectors.groupingBy(Object::getClass, Collectors.toList()))
+                .values());
     }
 }

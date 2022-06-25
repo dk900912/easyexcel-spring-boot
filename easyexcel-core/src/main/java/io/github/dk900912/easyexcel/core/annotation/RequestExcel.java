@@ -15,7 +15,9 @@ import java.lang.annotation.Target;
 public @interface RequestExcel {
 
     /**
-     * 导入文件标题行数
+     * The sheet array of the uploaded excel.
+     *
+     * @return The sheet array of the uploaded excel
      */
-    int headRow() default 1;
+    Sheet[] sheets();
 }

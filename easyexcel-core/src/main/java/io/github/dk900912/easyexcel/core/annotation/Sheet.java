@@ -15,7 +15,30 @@ import java.lang.annotation.Target;
 public @interface Sheet {
 
     /**
-     * 表格名称
+     * The name of the sheet.
+     *
+     * @return The name of the sheet
      */
     String name() default "";
+
+    /**
+     * The index of the sheet.
+     *
+     * @return The index of the sheet
+     */
+    int index() default 0;
+
+    /**
+     * The model of the sheet header.
+     *
+     * @return The model of the sheet header
+     */
+    Class<?> headClazz();
+
+    /**
+     * The row number of the sheet header.
+     *
+     * @return The row number of the sheet header
+     */
+    int headRowNumber() default 1;
 }

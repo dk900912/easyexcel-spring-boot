@@ -31,5 +31,4 @@ public class EasyExcelAutoConfigurationImportSelector implements ImportAware {
     public RequestMappingHandlerAdapterPostProcessor requestMappingHandlerAdapterPostProcessor() {
         return new RequestMappingHandlerAdapterPostProcessor();
     }
-
 }

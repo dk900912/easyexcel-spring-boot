@@ -20,22 +20,30 @@ import static io.github.dk900912.easyexcel.core.enumeration.Scene.NORMAL;
 public @interface ResponseExcel {
 
     /**
-     * 导出文件名称
+     * The name of the exported excel.
+     *
+     * @return The name of the exported excel
      */
     String name();
 
     /**
-     * 导出文件格式
+     * The format of the exported excel.
+     *
+     * @return The format of the exported excel
      */
     ExcelTypeEnum suffix() default ExcelTypeEnum.XLSX;
 
     /**
-     * 导出文件中表格名称
+     * The sheet array of the exported excel.
+     *
+     * @return The sheet array of the exported excel
      */
-    Sheet sheetName() default @Sheet;
+    Sheet[] sheets() default {};
 
     /**
-     * 导出模板或者常规导出
+     * The exporting scene.
+     *
+     * @return The exporting scene
      */
     Scene scene() default NORMAL;
 }
