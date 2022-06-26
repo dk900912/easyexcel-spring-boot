@@ -6,7 +6,7 @@
 <dependency>
 	<groupId>io.github.dk900912</groupId>
 	<artifactId>easyexcel-spring-boot-starter</artifactId>
-	<version>0.0.3</version>
+	<version>0.0.4</version>
 </dependency>
 ```
 ### 1.2 导入与导出
@@ -14,6 +14,7 @@
 @RestController
 @RequestMapping(path = "/easyexcel")
 public class ExcelController {
+
     @PostMapping(path = "/v1/upload")
     public ResponseEntity<String> upload(
             @RequestExcel(sheets = {
@@ -21,17 +22,16 @@ public class ExcelController {
                     @Sheet(index = 1, headClazz = User.class, headRowNumber = 1),
                     @Sheet(index = 2, headClazz = User.class, headRowNumber = 1)
             })
-            @Valid List<User> users) {
-        System.out.println(users.size());
+            @Valid List<List<User>> users) {
         return ResponseEntity.ok("OK");
     }
 
     @ResponseExcel(
             name="程序猿",
             sheets = {
-                    @Sheet(name = "0", headClazz = User.class, headRowNumber = 1),
-                    @Sheet(name = "1", headClazz = User.class, headRowNumber = 1),
-                    @Sheet(name = "2", headClazz = User.class, headRowNumber = 1)
+                    @Sheet(name = "sheet-0", headClazz = User.class),
+                    @Sheet(name = "sheet-1", headClazz = User.class),
+                    @Sheet(name = "sheet-2", headClazz = User.class)
             },
             suffix = ExcelTypeEnum.XLSX)
     @GetMapping(path = "/v1/export")
@@ -43,7 +43,7 @@ public class ExcelController {
                     .build();
             data.add(user);
         }
-        return ImmutableList.of(data, data);
+        return ImmutableList.of(data, data, data);
     }
 
     @ResponseExcel(name="templates/程序猿.xlsx", scene = TEMPLATE)
@@ -54,7 +54,7 @@ public class ExcelController {
 ## 2 实现原理
 一切 Java 程序都是基于 Thread 的，当一个 HTTP 请求到达后，Servlet Container 会从其线程池中捞出一个线程来处理该 HTTP 请求。具体地，该 HTTP 请求首先到达 Servlet Container 的`FilterChain`中；然后，FilterChain 将该 HTTP 请求委派给`DispatcherServlet`处理，而 DispatcherServlet 恰恰就是 Spring MVC 的门户。在 Spring MVC 中，所有 HTTP 请求都由 DispatcherServlet 进行路由分发。大致流程下图所示。
 
-图
+![spring_mvc_execution_sequence](doc/spring_mvc_execution_sequence.png)]
 
 DispatcherServlet 在 HandlerMapping 的帮助下可以快速匹配到最终的 Controller，由于 Controller 大多由`@RequestMapping`注解标注，那么`RequestMappingHandlerMapping`最终脱颖而出。RequestMappingHandlerMapping 会将 HTTP 请求映射到一个`HandlerExecutionChain`实例中，每一个 HandlerExecutionChain 实例的内部维护了`HandlerMethod`和`List<HandlerInterceptor>`。其中，HandlerMethod 实例持有一个`Object`类型的 bean 变量和`java.lang.reflect.Method`类型的 method 变量，bean 和 method 这俩成员变量组合起来最终可以确定究竟由哪一个 Controller 中的某一方法来处理当前 HTTP 请求。
 
@@ -111,6 +111,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected <T> Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
             throws IOException, UnsatisfiedMethodSignatureException {
         validateArgParamOrReturnValueType(parameter);
+
         HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
         Assert.state(servletRequest != null, "No HttpServletRequest");
 
@@ -184,8 +185,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected void writeWithMessageConverters(Object value, MethodParameter returnType, NativeWebRequest webRequest)
             throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException {
 
-        validateArgParamOrReturnValueType(returnType);
-
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
 
@@ -203,6 +202,8 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(response.getOutputStream());
             FileCopyUtils.copy(bufferedInputStream, bufferedOutputStream);
         } else {
+            validateArgParamOrReturnValueType(returnType);
+
             response.setHeader("Content-disposition",
                     "attachment;filename=" + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8.name()) + responseExcelInfo.getSuffix().getValue());
@@ -233,15 +234,15 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
             if (!List.class.isAssignableFrom(resolvableType.resolve())) {
                 throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
             }
             if (!List.class.isAssignableFrom(resolvableType.getGeneric(0).resolve())) {
                 throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
             }
         } catch (Exception exception) {
             throw new UnsatisfiedMethodSignatureException(
-                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                    "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
         }
     }
 }

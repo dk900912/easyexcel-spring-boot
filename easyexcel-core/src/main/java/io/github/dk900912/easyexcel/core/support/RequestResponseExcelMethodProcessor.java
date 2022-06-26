@@ -94,6 +94,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected <T> Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
             throws IOException, UnsatisfiedMethodSignatureException {
         validateArgParamOrReturnValueType(parameter);
+
         HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
         Assert.state(servletRequest != null, "No HttpServletRequest");
 
@@ -167,8 +168,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected void writeWithMessageConverters(Object value, MethodParameter returnType, NativeWebRequest webRequest)
             throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException {
 
-        validateArgParamOrReturnValueType(returnType);
-
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
 
@@ -186,6 +185,8 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(response.getOutputStream());
             FileCopyUtils.copy(bufferedInputStream, bufferedOutputStream);
         } else {
+            validateArgParamOrReturnValueType(returnType);
+
             response.setHeader("Content-disposition",
                     "attachment;filename=" + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8.name()) + responseExcelInfo.getSuffix().getValue());
@@ -216,15 +217,15 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
             if (!List.class.isAssignableFrom(resolvableType.resolve())) {
                 throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
             }
             if (!List.class.isAssignableFrom(resolvableType.getGeneric(0).resolve())) {
                 throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
             }
         } catch (Exception exception) {
             throw new UnsatisfiedMethodSignatureException(
-                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+                    "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
         }
     }
 }
