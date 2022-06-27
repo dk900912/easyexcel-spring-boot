@@ -8,6 +8,7 @@ import com.alibaba.excel.write.metadata.WriteSheet;
 import io.github.dk900912.easyexcel.core.annotation.RequestExcel;
 import io.github.dk900912.easyexcel.core.annotation.ResponseExcel;
 import io.github.dk900912.easyexcel.core.exception.ExcelCellContentNotValidException;
+import io.github.dk900912.easyexcel.core.exception.RedundantSheetAnnotationException;
 import io.github.dk900912.easyexcel.core.exception.UnsatisfiedMethodSignatureException;
 import io.github.dk900912.easyexcel.core.listener.CollectorReadListener;
 import io.github.dk900912.easyexcel.core.model.RequestExcelInfo;
@@ -21,6 +22,7 @@ import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -32,6 +34,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ConstraintViolation;
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -40,6 +43,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -51,6 +55,13 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
  */
 public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumentResolver,
         HandlerMethodReturnValueHandler {
+
+    public static final String RESPONSE_EXCEL_CONTENT_TYPE =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    public static final String RESPONSE_EXCEL_CONTENT_DISPOSITION = "Content-disposition";
+
+    public static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
 
     private final ResourceLoader resourceLoader;
 
@@ -68,6 +79,18 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return returnType.hasMethodAnnotation(ResponseExcel.class);
     }
 
+    /**
+     * Resolve the uploaded excel into {@code List<List<>>}
+     *
+     * @param parameter the method parameter to resolve. This parameter must
+     * have previously been passed to {@link #supportsParameter} which must
+     * have returned {@code true}.
+     * @param mavContainer the ModelAndViewContainer for the current request
+     * @param webRequest the current request
+     * @param binderFactory a factory for creating {@link WebDataBinder} instances
+     * @return the resolved argument value, or {@code null} if not resolvable
+     * @throws Exception in case of errors with the preparation of argument values
+     */
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
@@ -79,6 +102,17 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return data;
     }
 
+    /**
+     * Generate excel by the given return value
+     *
+     * @param returnValue the value returned from the handler method
+     * @param returnType the type of the return value. This type must have
+     * previously been passed to {@link #supportsReturnType} which must
+     * have returned {@code true}.
+     * @param mavContainer the ModelAndViewContainer for the current request
+     * @param webRequest the current request
+     * @throws Exception if the return value handling results in an error
+     */
     @Override
     public void handleReturnValue(Object returnValue, MethodParameter returnType,
                                   ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
@@ -144,6 +178,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected void validateIfNecessary(Object data, MethodParameter parameter) throws ExcelCellContentNotValidException {
         if (parameter.hasParameterAnnotation(Validated.class)
                 || parameter.hasParameterAnnotation(Valid.class)) {
+            @SuppressWarnings("unchecked")
             List<Object> flattenData = ((List<List<Object>>) data).stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
@@ -166,7 +201,9 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // +----------------------------------------------------------------------------+
 
     protected void writeWithMessageConverters(Object value, MethodParameter returnType, NativeWebRequest webRequest)
-            throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException {
+            throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException, RedundantSheetAnnotationException {
+
+        Assert.notNull(value, "The method annotated with @ResponseExcel can not return null");
 
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
@@ -174,11 +211,11 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         ResponseExcelInfo responseExcelInfo =
                 new ResponseExcelInfo(returnType.getMethodAnnotation(ResponseExcel.class));
         final String fileName = responseExcelInfo.getName();
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setContentType(RESPONSE_EXCEL_CONTENT_TYPE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         if (TEMPLATE.equals(responseExcelInfo.getScene())) {
-            response.setHeader("Content-disposition",
-                    "attachment;filename=" + URLEncoder.encode(
+            response.setHeader(RESPONSE_EXCEL_CONTENT_DISPOSITION,
+                    RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName.substring(fileName.indexOf("/") + 1), StandardCharsets.UTF_8.name()));
             BufferedInputStream bufferedInputStream =
                     new BufferedInputStream(resourceLoader.getResource(CLASSPATH_URL_PREFIX + fileName).getInputStream());
@@ -187,8 +224,8 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         } else {
             validateArgParamOrReturnValueType(returnType);
 
-            response.setHeader("Content-disposition",
-                    "attachment;filename=" + URLEncoder.encode(
+            response.setHeader(RESPONSE_EXCEL_CONTENT_DISPOSITION,
+                    RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8.name()) + responseExcelInfo.getSuffix().getValue());
             try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
                 List<WriteSheet> writeSheetList = responseExcelInfo.getSheetInfoList()
@@ -198,7 +235,11 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                                 .build()
                         )
                         .collect(Collectors.toList());
+                @SuppressWarnings("unchecked")
                 List<List<Object>> multiSheetData = (List<List<Object>>) value;
+
+                validateRedundantSheetAnnotation(writeSheetList, multiSheetData);
+
                 for (int i = 0; i < writeSheetList.size(); i++) {
                     WriteSheet writeSheet = writeSheetList.get(i);
                     List<Object> singleSheetData = multiSheetData.get(i);
@@ -213,19 +254,28 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // +----------------------------------------------------------------------------+
 
     private void validateArgParamOrReturnValueType(MethodParameter target) throws UnsatisfiedMethodSignatureException {
-        try {
-            ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
-            if (!List.class.isAssignableFrom(resolvableType.resolve())) {
-                throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
-            }
-            if (!List.class.isAssignableFrom(resolvableType.getGeneric(0).resolve())) {
-                throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
-            }
-        } catch (Exception exception) {
+        ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
+        Boolean outerList = Optional.<Class<?>>ofNullable(resolvableType.resolve())
+                .map(List.class::isAssignableFrom)
+                .orElse(false);
+        if (!outerList) {
             throw new UnsatisfiedMethodSignatureException(
-                    "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
+                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+        }
+        Boolean innerList = Optional.<ResolvableType>of(resolvableType.getGeneric(0))
+                .map(ResolvableType::resolve)
+                .map(List.class::isAssignableFrom)
+                .orElse(false);
+        if (!innerList) {
+            throw new UnsatisfiedMethodSignatureException(
+                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+        }
+    }
+
+    private void validateRedundantSheetAnnotation(@NotNull List<WriteSheet> writeSheetList, @NotNull List<List<Object>> multiSheetData)
+            throws RedundantSheetAnnotationException {
+        if (writeSheetList.size() > multiSheetData.size()) {
+            throw new RedundantSheetAnnotationException("Redundant @Sheet annotation in @ResponseExcel");
         }
     }
 }

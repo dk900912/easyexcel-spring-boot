@@ -6,7 +6,7 @@
 <dependency>
 	<groupId>io.github.dk900912</groupId>
 	<artifactId>easyexcel-spring-boot-starter</artifactId>
-	<version>0.0.4</version>
+	<version>0.0.5</version>
 </dependency>
 ```
 ### 1.2 导入与导出

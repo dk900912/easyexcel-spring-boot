@@ -1,11 +1,9 @@
 package io.github.dk900912.easyexcel.core.exception;
 
-import org.springframework.web.util.NestedServletException;
-
 /**
  * @author dukui
  */
-public class ExcelCellContentNotValidException extends NestedServletException {
+public class ExcelCellContentNotValidException extends EasyExcelException {
 
     public ExcelCellContentNotValidException(String msg) {
         super(msg);

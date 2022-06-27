@@ -9,6 +9,7 @@ import com.alibaba.excel.metadata.property.ExcelContentProperty;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 /**
  * @author dukui
@@ -34,6 +35,10 @@ public class LocalDateStringConverter implements Converter<LocalDate> {
     public LocalDate convertToJavaData(ReadCellData<?> cellData,
                                        ExcelContentProperty contentProperty,
                                        GlobalConfiguration globalConfiguration) throws Exception {
+        if (!Objects.equals(CellDataTypeEnum.STRING, cellData.getType())) {
+            throw new UnsupportedOperationException(
+                    "The cell data type is not supported by the current converter");
+        }
         return DATE_TIME_FORMATTER.parse(cellData.getStringValue(), LocalDate::from);
     }
 

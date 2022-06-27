@@ -7,7 +7,7 @@
     <groupId>io.github.dk900912</groupId>
     <artifactId>easyexcel-spring-boot</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
 
     <name>easyexcel-spring-boot</name>
     <description>spring boot support for alibaba easyexcel</description>
