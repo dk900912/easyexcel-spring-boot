@@ -6,7 +6,7 @@
 <dependency>
 	<groupId>io.github.dk900912</groupId>
 	<artifactId>easyexcel-spring-boot-starter</artifactId>
-	<version>0.0.5</version>
+	<version>0.0.6</version>
 </dependency>
 ```
 ### 1.2 导入与导出
@@ -16,13 +16,23 @@
 public class ExcelController {
 
     @PostMapping(path = "/v1/upload")
-    public ResponseEntity<String> upload(
+    public ResponseEntity<String> v1upload(
             @RequestExcel(sheets = {
                     @Sheet(index = 0, headClazz = User.class, headRowNumber = 1),
                     @Sheet(index = 1, headClazz = User.class, headRowNumber = 1),
-                    @Sheet(index = 2, headClazz = User.class, headRowNumber = 1)
-            })
-            @Valid List<List<User>> users) {
+                    @Sheet(index = 2, headClazz = User.class, headRowNumber = 1)}
+            )
+            @Validated List<List<User>> users) {
+        return ResponseEntity.ok("OK");
+    }
+
+    @PostMapping(path = "/v2/upload")
+    public ResponseEntity<String> v2upload(
+            @RequestExcel(sheets = {
+                    @Sheet(index = 0, headClazz = User.class, headRowNumber = 1),
+                    @Sheet(index = 1, headClazz = Admin.class, headRowNumber = 1)}
+            )
+            @Validated List<List<Object>> data) {
         return ResponseEntity.ok("OK");
     }
 
@@ -35,18 +45,47 @@ public class ExcelController {
             },
             suffix = ExcelTypeEnum.XLSX)
     @GetMapping(path = "/v1/export")
-    public List<List<User>> export() {
-        List<User> data = Lists.newArrayList();
+    public List<List<User>> v1export() {
+        List<User> userList = Lists.newArrayList();
         for (int i = 0; i < 10000; i++) {
             User user = User.builder().name("暴风赤红" + (i+1))
-                    .birth(LocalDate.now()).address("江苏省苏州市科技城昆仑山路58号")
+                    .birth(LocalDate.now()).address("江苏省苏州市科技城昆仑山路58号").sex(Sex.MALE)
                     .build();
-            data.add(user);
+            userList.add(user);
         }
-        return ImmutableList.of(data, data, data);
+        return ImmutableList.of(userList, userList, userList);
     }
 
-    @ResponseExcel(name="templates/程序猿.xlsx", scene = TEMPLATE)
+    @ResponseExcel(
+            name="程序猿",
+            sheets = {
+                    @Sheet(name = "sheet-0", headClazz = User.class),
+                    @Sheet(name = "sheet-1", headClazz = Admin.class)
+            },
+            suffix = ExcelTypeEnum.XLS)
+    @GetMapping(path = "/v2/export")
+    public List<List<?>> v2export() {
+        List<User> userList = Lists.newArrayList();
+        List<Admin> adminList = Lists.newArrayList();
+        for (int i = 0; i < 10000; i++) {
+            User user = User.builder().name("暴风赤红" + (i+1))
+                    .birth(LocalDate.now()).address("江苏省苏州市科技城昆仑山路58号").sex(Sex.MALE)
+                    .build();
+            userList.add(user);
+            Admin admin = Admin.builder().name("擎天柱" + (i+1))
+                    .birth(LocalDate.now()).address("江苏省苏州市科技城昆仑山路68号").sex(Sex.MALE)
+                    .build();
+            adminList.add(admin);
+        }
+
+        List<List<?>> responseData = Lists.newArrayList();
+        responseData.add(userList);
+        responseData.add(adminList);
+
+        return responseData;
+    }
+
+    @ResponseExcel(name="templates/tem.xlsx", scene = TEMPLATE)
     @GetMapping(path = "/v1/template")
     public void template() {}
 }
@@ -69,6 +108,19 @@ DispatcherServlet 在 HandlerMapping 的帮助下可以快速匹配到最终的 
 public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumentResolver,
         HandlerMethodReturnValueHandler {
 
+    private static final String RESPONSE_EXCEL_CONTENT_TYPE =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    private static final String RESPONSE_EXCEL_CONTENT_DISPOSITION = "Content-disposition";
+
+    private static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
+
+    private static final String EXCEL_TYPE_HEADER = "excel-type";
+
+    private static final Set<String> LEGAL_EXCEL_ENUM = Arrays.stream(ExcelTypeEnum.values())
+            .map(ExcelTypeEnum::name)
+            .collect(Collectors.toSet());
+
     private final ResourceLoader resourceLoader;
 
     public RequestResponseExcelMethodProcessor(ResourceLoader resourceLoader) {
@@ -85,6 +137,18 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return returnType.hasMethodAnnotation(ResponseExcel.class);
     }
 
+    /**
+     * Resolve the uploaded excel into {@code List<List<>>}
+     *
+     * @param parameter the method parameter to resolve. This parameter must
+     * have previously been passed to {@link #supportsParameter} which must
+     * have returned {@code true}.
+     * @param mavContainer the ModelAndViewContainer for the current request
+     * @param webRequest the current request
+     * @param binderFactory a factory for creating {@link WebDataBinder} instances
+     * @return the resolved argument value, or {@code null} if not resolvable
+     * @throws Exception in case of errors with the preparation of argument values
+     */
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
@@ -96,6 +160,17 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return data;
     }
 
+    /**
+     * Generate excel by the given return value
+     *
+     * @param returnValue the value returned from the handler method
+     * @param returnType the type of the return value. This type must have
+     * previously been passed to {@link #supportsReturnType} which must
+     * have returned {@code true}.
+     * @param mavContainer the ModelAndViewContainer for the current request
+     * @param webRequest the current request
+     * @throws Exception if the return value handling results in an error
+     */
     @Override
     public void handleReturnValue(Object returnValue, MethodParameter returnType,
                                   ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
@@ -108,7 +183,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // |                            private method for read                         |
     // +----------------------------------------------------------------------------+
 
-    protected <T> Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
+    protected Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
             throws IOException, UnsatisfiedMethodSignatureException {
         validateArgParamOrReturnValueType(parameter);
 
@@ -120,10 +195,14 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
 
     protected Object readWithMessageConverters(HttpServletRequest servletRequest, MethodParameter parameter)
             throws IOException {
+
+        ExcelTypeEnum excelTypeEnum = getExcelTypeFromUploadedFile(servletRequest);
+
         RequestExcelInfo requestExcelInfo =
                 new RequestExcelInfo(parameter.getParameterAnnotation(RequestExcel.class));
         InputStream inputStream;
         if (servletRequest instanceof MultipartRequest) {
+            // Since Java 11, you could construct an empty InputStream by InputStream.nullInputStream()
             inputStream = ((MultipartRequest) servletRequest)
                     .getMultiFileMap()
                     .values()
@@ -137,13 +216,13 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                             return null;
                         }
                     })
-                    .get();
+                    .orElse(new ByteArrayInputStream(new byte[0]));
         } else {
             inputStream = servletRequest.getInputStream();
         }
 
         CollectorReadListener collectorReadListener = new CollectorReadListener();
-        try (ExcelReader excelReader = EasyExcel.read(inputStream).build()) {
+        try (ExcelReader excelReader = EasyExcel.read(inputStream).excelType(excelTypeEnum).build()) {
             List<ReadSheet> readSheetList = requestExcelInfo.getSheetInfoList()
                     .stream()
                     .map(sheetInfo -> EasyExcel.readSheet(sheetInfo.getIndex())
@@ -161,6 +240,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected void validateIfNecessary(Object data, MethodParameter parameter) throws ExcelCellContentNotValidException {
         if (parameter.hasParameterAnnotation(Validated.class)
                 || parameter.hasParameterAnnotation(Valid.class)) {
+            @SuppressWarnings("unchecked")
             List<Object> flattenData = ((List<List<Object>>) data).stream()
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
@@ -171,7 +251,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                             .map(ConstraintViolation::getMessage)
                             .distinct()
                             .findFirst()
-                            .get();
+                            .orElse("Invalid cell content");
                     throw new ExcelCellContentNotValidException(errorMsg);
                 }
             }
@@ -183,7 +263,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // +----------------------------------------------------------------------------+
 
     protected void writeWithMessageConverters(Object value, MethodParameter returnType, NativeWebRequest webRequest)
-            throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException {
+            throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException, RedundantSheetAnnotationException {
 
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
@@ -191,23 +271,25 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         ResponseExcelInfo responseExcelInfo =
                 new ResponseExcelInfo(returnType.getMethodAnnotation(ResponseExcel.class));
         final String fileName = responseExcelInfo.getName();
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setContentType(RESPONSE_EXCEL_CONTENT_TYPE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         if (TEMPLATE.equals(responseExcelInfo.getScene())) {
-            response.setHeader("Content-disposition",
-                    "attachment;filename=" + URLEncoder.encode(
+            response.setHeader(RESPONSE_EXCEL_CONTENT_DISPOSITION,
+                    RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName.substring(fileName.indexOf("/") + 1), StandardCharsets.UTF_8.name()));
             BufferedInputStream bufferedInputStream =
                     new BufferedInputStream(resourceLoader.getResource(CLASSPATH_URL_PREFIX + fileName).getInputStream());
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(response.getOutputStream());
             FileCopyUtils.copy(bufferedInputStream, bufferedOutputStream);
         } else {
+            Assert.notNull(value, "The method annotated with @ResponseExcel can not return null in non-template mode");
             validateArgParamOrReturnValueType(returnType);
 
-            response.setHeader("Content-disposition",
-                    "attachment;filename=" + URLEncoder.encode(
+            response.setHeader(RESPONSE_EXCEL_CONTENT_DISPOSITION,
+                    RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8.name()) + responseExcelInfo.getSuffix().getValue());
-            try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
+            try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream())
+                    .charset(StandardCharsets.UTF_8).excelType(responseExcelInfo.getSuffix()).build()) {
                 List<WriteSheet> writeSheetList = responseExcelInfo.getSheetInfoList()
                         .stream()
                         .map(sheetInfo -> EasyExcel.writerSheet(sheetInfo.getName())
@@ -215,7 +297,11 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                                 .build()
                         )
                         .collect(Collectors.toList());
+                @SuppressWarnings("unchecked")
                 List<List<Object>> multiSheetData = (List<List<Object>>) value;
+
+                validateRedundantSheetAnnotation(writeSheetList, multiSheetData);
+
                 for (int i = 0; i < writeSheetList.size(); i++) {
                     WriteSheet writeSheet = writeSheetList.get(i);
                     List<Object> singleSheetData = multiSheetData.get(i);
@@ -230,20 +316,36 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // +----------------------------------------------------------------------------+
 
     private void validateArgParamOrReturnValueType(MethodParameter target) throws UnsatisfiedMethodSignatureException {
-        try {
-            ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
-            if (!List.class.isAssignableFrom(resolvableType.resolve())) {
-                throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
-            }
-            if (!List.class.isAssignableFrom(resolvableType.getGeneric(0).resolve())) {
-                throw new UnsatisfiedMethodSignatureException(
-                        "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
-            }
-        } catch (Exception exception) {
+        ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
+        boolean outerList = Optional.<Class<?>>ofNullable(resolvableType.resolve())
+                .map(List.class::isAssignableFrom)
+                .orElse(false);
+        if (!outerList) {
             throw new UnsatisfiedMethodSignatureException(
-                    "@RequestExcel or @ResponseExcel Must Be Annotated With List<List<>>");
+                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
         }
+        boolean innerList = Optional.<ResolvableType>of(resolvableType.getGeneric(0))
+                .map(ResolvableType::resolve)
+                .map(List.class::isAssignableFrom)
+                .orElse(false);
+        if (!innerList) {
+            throw new UnsatisfiedMethodSignatureException(
+                    "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
+        }
+    }
+
+    private void validateRedundantSheetAnnotation(@NotNull List<WriteSheet> writeSheetList, @NotNull List<List<Object>> multiSheetData)
+            throws RedundantSheetAnnotationException {
+        if (writeSheetList.size() > multiSheetData.size()) {
+            throw new RedundantSheetAnnotationException("Redundant @Sheet annotation in @ResponseExcel");
+        }
+    }
+
+    private ExcelTypeEnum getExcelTypeFromUploadedFile(HttpServletRequest servletRequest) {
+        String excelType = servletRequest.getHeader(EXCEL_TYPE_HEADER);
+        Assert.notNull(excelType, "The excel-type was absent in request header");
+        Assert.isTrue(LEGAL_EXCEL_ENUM.contains(excelType.toUpperCase()), "Illegal excel-type in request header");
+        return ExcelTypeEnum.valueOf(excelType.toUpperCase());
     }
 }
 ```

@@ -4,6 +4,7 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.read.metadata.ReadSheet;
+import com.alibaba.excel.support.ExcelTypeEnum;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import io.github.dk900912.easyexcel.core.annotation.RequestExcel;
 import io.github.dk900912.easyexcel.core.annotation.ResponseExcel;
@@ -37,10 +38,12 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -56,12 +59,18 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumentResolver,
         HandlerMethodReturnValueHandler {
 
-    public static final String RESPONSE_EXCEL_CONTENT_TYPE =
+    private static final String RESPONSE_EXCEL_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    public static final String RESPONSE_EXCEL_CONTENT_DISPOSITION = "Content-disposition";
+    private static final String RESPONSE_EXCEL_CONTENT_DISPOSITION = "Content-disposition";
 
-    public static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
+    private static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
+
+    private static final String EXCEL_TYPE_HEADER = "excel-type";
+
+    private static final Set<String> LEGAL_EXCEL_ENUM = Arrays.stream(ExcelTypeEnum.values())
+            .map(ExcelTypeEnum::name)
+            .collect(Collectors.toSet());
 
     private final ResourceLoader resourceLoader;
 
@@ -125,7 +134,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     // |                            private method for read                         |
     // +----------------------------------------------------------------------------+
 
-    protected <T> Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
+    protected Object readWithMessageConverters(NativeWebRequest webRequest, MethodParameter parameter)
             throws IOException, UnsatisfiedMethodSignatureException {
         validateArgParamOrReturnValueType(parameter);
 
@@ -137,10 +146,14 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
 
     protected Object readWithMessageConverters(HttpServletRequest servletRequest, MethodParameter parameter)
             throws IOException {
+
+        ExcelTypeEnum excelTypeEnum = getExcelTypeFromUploadedFile(servletRequest);
+
         RequestExcelInfo requestExcelInfo =
                 new RequestExcelInfo(parameter.getParameterAnnotation(RequestExcel.class));
         InputStream inputStream;
         if (servletRequest instanceof MultipartRequest) {
+            // Since Java 11, you could construct an empty InputStream by InputStream.nullInputStream()
             inputStream = ((MultipartRequest) servletRequest)
                     .getMultiFileMap()
                     .values()
@@ -154,13 +167,13 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                             return null;
                         }
                     })
-                    .get();
+                    .orElse(new ByteArrayInputStream(new byte[0]));
         } else {
             inputStream = servletRequest.getInputStream();
         }
 
         CollectorReadListener collectorReadListener = new CollectorReadListener();
-        try (ExcelReader excelReader = EasyExcel.read(inputStream).build()) {
+        try (ExcelReader excelReader = EasyExcel.read(inputStream).excelType(excelTypeEnum).build()) {
             List<ReadSheet> readSheetList = requestExcelInfo.getSheetInfoList()
                     .stream()
                     .map(sheetInfo -> EasyExcel.readSheet(sheetInfo.getIndex())
@@ -189,7 +202,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
                             .map(ConstraintViolation::getMessage)
                             .distinct()
                             .findFirst()
-                            .get();
+                            .orElse("Invalid cell content");
                     throw new ExcelCellContentNotValidException(errorMsg);
                 }
             }
@@ -202,8 +215,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
 
     protected void writeWithMessageConverters(Object value, MethodParameter returnType, NativeWebRequest webRequest)
             throws IOException, HttpMessageNotWritableException, UnsatisfiedMethodSignatureException, RedundantSheetAnnotationException {
-
-        Assert.notNull(value, "The method annotated with @ResponseExcel can not return null");
 
         HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(response != null, "No HttpServletResponse");
@@ -222,12 +233,14 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(response.getOutputStream());
             FileCopyUtils.copy(bufferedInputStream, bufferedOutputStream);
         } else {
+            Assert.notNull(value, "The method annotated with @ResponseExcel can not return null in non-template mode");
             validateArgParamOrReturnValueType(returnType);
 
             response.setHeader(RESPONSE_EXCEL_CONTENT_DISPOSITION,
                     RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8.name()) + responseExcelInfo.getSuffix().getValue());
-            try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
+            try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream())
+                    .charset(StandardCharsets.UTF_8).excelType(responseExcelInfo.getSuffix()).build()) {
                 List<WriteSheet> writeSheetList = responseExcelInfo.getSheetInfoList()
                         .stream()
                         .map(sheetInfo -> EasyExcel.writerSheet(sheetInfo.getName())
@@ -255,14 +268,14 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
 
     private void validateArgParamOrReturnValueType(MethodParameter target) throws UnsatisfiedMethodSignatureException {
         ResolvableType resolvableType = ResolvableType.forMethodParameter(target);
-        Boolean outerList = Optional.<Class<?>>ofNullable(resolvableType.resolve())
+        boolean outerList = Optional.<Class<?>>ofNullable(resolvableType.resolve())
                 .map(List.class::isAssignableFrom)
                 .orElse(false);
         if (!outerList) {
             throw new UnsatisfiedMethodSignatureException(
                     "@RequestExcel or @ResponseExcel must be annotated with List<List<>>");
         }
-        Boolean innerList = Optional.<ResolvableType>of(resolvableType.getGeneric(0))
+        boolean innerList = Optional.<ResolvableType>of(resolvableType.getGeneric(0))
                 .map(ResolvableType::resolve)
                 .map(List.class::isAssignableFrom)
                 .orElse(false);
@@ -277,5 +290,12 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         if (writeSheetList.size() > multiSheetData.size()) {
             throw new RedundantSheetAnnotationException("Redundant @Sheet annotation in @ResponseExcel");
         }
+    }
+
+    private ExcelTypeEnum getExcelTypeFromUploadedFile(HttpServletRequest servletRequest) {
+        String excelType = servletRequest.getHeader(EXCEL_TYPE_HEADER);
+        Assert.notNull(excelType, "The excel-type was absent in request header");
+        Assert.isTrue(LEGAL_EXCEL_ENUM.contains(excelType.toUpperCase()), "Illegal excel-type in request header");
+        return ExcelTypeEnum.valueOf(excelType.toUpperCase());
     }
 }

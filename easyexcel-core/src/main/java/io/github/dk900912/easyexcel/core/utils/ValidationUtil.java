@@ -10,6 +10,9 @@ import java.util.Set;
  */
 public class ValidationUtil {
 
+    private ValidationUtil() {
+    }
+
     public static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
 
     public static <T> Set<ConstraintViolation<T>> validate(T target) {
