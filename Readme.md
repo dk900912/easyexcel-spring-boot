@@ -1,3 +1,16 @@
+<p align="center">
+<a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/Java-8+-green?logo=java&logoColor=white" alt="Java support"></a>
+<a href="https://www.apache.org/licenses/LICENSE-2.0.html"><img src="https://img.shields.io/github/license/dk900912/easyexcel-spring-boot?color=4D7A97&logo=apache" alt="License"></a>
+<a href="https://search.maven.org/search?q=a:easyexcel-spring-boot-starter"><img src="https://img.shields.io/maven-central/v/io.github.dk900912/easyexcel-spring-boot-starter?logo=apache-maven" alt="Maven Central"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot/releases"><img src="https://img.shields.io/github/release/dk900912/easyexcel-spring-boot.svg" alt="GitHub release"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot/stargazers"><img src="https://img.shields.io/github/stars/dk900912/easyexcel-spring-boot" alt="GitHub Stars"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot/fork"><img src="https://img.shields.io/github/forks/dk900912/easyexcel-spring-boot" alt="GitHub Forks"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot/issues"><img src="https://img.shields.io/github/issues/dk900912/easyexcel-spring-boot" alt="GitHub issues"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot/graphs/contributors"><img src="https://img.shields.io/github/contributors/dk900912/easyexcel-spring-boot" alt="GitHub Contributors"></a>
+<a href="https://github.com/dk900912/easyexcel-spring-boot"><img src="https://img.shields.io/github/repo-size/dk900912/easyexcel-spring-boot" alt="GitHub repo size"></a>
+</p>
+
+
 # 虽然 EasyExcel 很香，但别再自己手写读写逻辑了
 `EasyExcel`是一款由阿里开源的 Excel 处理工具。相较于原生的`Apache POI`，它可以更优雅、快速地完成 Excel 的读写功能，同时更加地节约内存。即使 EasyExcel 已经很优雅了，但面向 Excel 文档的读写逻辑几乎千篇一律，笔者索性将这些模板化的逻辑抽离出来，该组件已经发布到 maven 中央仓库，感兴趣的朋友可以体验一下。
 ## 1 快速上手
