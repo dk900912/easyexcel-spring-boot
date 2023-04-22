@@ -1,17 +1,17 @@
 package io.github.dk900912.easyexcel.core.exception;
 
-import org.springframework.web.util.NestedServletException;
+import jakarta.servlet.ServletException;
 
 /**
  * @author dukui
  */
-public class EasyExcelException extends NestedServletException {
+public abstract class EasyExcelException extends ServletException {
 
-    public EasyExcelException(String msg) {
+    protected EasyExcelException(String msg) {
         super(msg);
     }
 
-    public EasyExcelException(String msg, Throwable cause) {
+    protected EasyExcelException(String msg, Throwable cause) {
         super(msg, cause);
     }
 }

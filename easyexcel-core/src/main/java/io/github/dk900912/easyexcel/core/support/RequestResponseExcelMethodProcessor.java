@@ -18,6 +18,11 @@ import io.github.dk900912.easyexcel.core.listener.CollectorReadListener;
 import io.github.dk900912.easyexcel.core.model.RequestExcelInfo;
 import io.github.dk900912.easyexcel.core.model.ResponseExcelInfo;
 import io.github.dk900912.easyexcel.core.utils.ValidationUtil;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.MethodParameter;
@@ -26,7 +31,6 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -34,11 +38,6 @@ import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.multipart.MultipartRequest;
 
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.ConstraintViolation;
-import javax.validation.Valid;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -46,7 +45,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +53,11 @@ import java.util.stream.Collectors;
 
 import static com.alibaba.excel.support.ExcelTypeEnum.CSV;
 import static io.github.dk900912.easyexcel.core.enumeration.Scene.TEMPLATE;
+import static io.github.dk900912.easyexcel.core.support.Constants.EXCEL_TYPE_HEADER;
+import static io.github.dk900912.easyexcel.core.support.Constants.LEGAL_EXCEL_TYPE;
+import static io.github.dk900912.easyexcel.core.support.Constants.RESPONSE_EXCEL_ATTACHMENT;
+import static io.github.dk900912.easyexcel.core.support.Constants.RESPONSE_EXCEL_CONTENT_DISPOSITION;
+import static io.github.dk900912.easyexcel.core.support.Constants.RESPONSE_EXCEL_CONTENT_TYPE;
 import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 
 /**
@@ -62,19 +65,6 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
  */
 public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumentResolver,
         HandlerMethodReturnValueHandler {
-
-    private static final String RESPONSE_EXCEL_CONTENT_TYPE =
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-    private static final String RESPONSE_EXCEL_CONTENT_DISPOSITION = "Content-disposition";
-
-    private static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
-
-    private static final String EXCEL_TYPE_HEADER = "excel-type";
-
-    private static final Set<String> LEGAL_EXCEL_TYPE = Arrays.stream(ExcelTypeEnum.values())
-            .map(ExcelTypeEnum::name)
-            .collect(Collectors.toSet());
 
     private final ResourceLoader resourceLoader;
 
@@ -92,18 +82,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return returnType.hasMethodAnnotation(ResponseExcel.class);
     }
 
-    /**
-     * Resolve the uploaded excel into {@code List<List<>>}
-     *
-     * @param parameter the method parameter to resolve. This parameter must
-     * have previously been passed to {@link #supportsParameter} which must
-     * have returned {@code true}.
-     * @param mavContainer the ModelAndViewContainer for the current request
-     * @param webRequest the current request
-     * @param binderFactory a factory for creating {@link WebDataBinder} instances
-     * @return the resolved argument value, or {@code null} if not resolvable
-     * @throws Exception in case of errors with the preparation of argument values
-     */
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
@@ -114,17 +92,6 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
         return data;
     }
 
-    /**
-     * Generate excel by the given return value
-     *
-     * @param returnValue the value returned from the handler method
-     * @param returnType the type of the return value. This type must have
-     * previously been passed to {@link #supportsReturnType} which must
-     * have returned {@code true}.
-     * @param mavContainer the ModelAndViewContainer for the current request
-     * @param webRequest the current request
-     * @throws Exception if the return value handling results in an error
-     */
     @Override
     public void handleReturnValue(Object returnValue, MethodParameter returnType,
                                   ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
