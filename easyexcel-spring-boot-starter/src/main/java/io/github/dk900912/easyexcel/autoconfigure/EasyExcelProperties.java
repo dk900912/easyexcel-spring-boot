@@ -19,6 +19,9 @@ public class EasyExcelProperties {
     private Boolean enabled = true;
 
     @NestedConfigurationProperty
+    private Name name = new Name();
+
+    @NestedConfigurationProperty
     private Template template = new Template();
 
     @NestedConfigurationProperty
@@ -30,6 +33,14 @@ public class EasyExcelProperties {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Name getName() {
+        return name;
+    }
+
+    public void setName(Name name) {
+        this.name = name;
     }
 
     public Template getTemplate() {
@@ -46,6 +57,19 @@ public class EasyExcelProperties {
 
     public void setConverter(Converter converter) {
         this.converter = converter;
+    }
+
+    public static class Name {
+
+        private String generator = "io.github.dk900912.easyexcel.support.DefaultFileNameGenerator";
+
+        public String getGenerator() {
+            return generator;
+        }
+
+        public void setGenerator(String generator) {
+            this.generator = generator;
+        }
     }
 
     public static class Template {

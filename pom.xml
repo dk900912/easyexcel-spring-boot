@@ -7,7 +7,7 @@
     <groupId>io.github.dk900912</groupId>
     <artifactId>easyexcel-spring-boot</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.9</version>
+    <version>1.0.0</version>
 
     <name>easyexcel-spring-boot</name>
     <description>spring boot support for alibaba easyexcel</description>
@@ -57,16 +57,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>io.github.dk900912</groupId>
-                <artifactId>easyexcel-core</artifactId>
-                <version>${oplog.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.dk900912</groupId>
-                <artifactId>easyexcel-spring-boot-autoconfigure</artifactId>
-                <version>${oplog.version}</version>
-            </dependency>
             <dependency>
                 <groupId>io.github.dk900912</groupId>
                 <artifactId>easyexcel-spring-boot-starter</artifactId>

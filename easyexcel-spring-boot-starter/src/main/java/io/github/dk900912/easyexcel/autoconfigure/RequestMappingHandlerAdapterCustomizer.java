@@ -1,7 +1,8 @@
-package io.github.dk900912.easyexcel.support;
+package io.github.dk900912.easyexcel.autoconfigure;
 
-import io.github.dk900912.easyexcel.autoconfigure.EasyExcelProperties;
 import io.github.dk900912.easyexcel.converter.http.ExcelHttpMessageConverter;
+import io.github.dk900912.easyexcel.support.FileNameGenerator;
+import io.github.dk900912.easyexcel.support.RequestResponseExcelMethodProcessor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -12,10 +13,13 @@ import org.springframework.core.Ordered;
 import org.springframework.core.PriorityOrdered;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
+import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -57,9 +61,11 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
     }
 
     private RequestMappingHandlerAdapter customizeRequestMappingHandlerAdapter(EasyExcelProperties easyExcelProperties, Object bean) {
+        Assert.notNull(easyExcelProperties, "EasyExcelProperties instance should not be null");
         String templateLocation = getTemplateLocation(easyExcelProperties);
         List<MediaType> extensibleMediaTypeList = getExtensibleMediaTypeList(easyExcelProperties);
-        return doCustomizeRequestMappingHandlerAdapter(bean, templateLocation, extensibleMediaTypeList);
+        FileNameGenerator fileNameGenerator = getFileNameGenerator(easyExcelProperties);
+        return doCustomizeRequestMappingHandlerAdapter(bean, templateLocation, extensibleMediaTypeList, fileNameGenerator);
     }
 
     private EasyExcelProperties getEasyExcelProperties() {
@@ -70,7 +76,30 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
         return easyExcelProperties.getTemplate().getLocation();
     }
 
-    private RequestMappingHandlerAdapter doCustomizeRequestMappingHandlerAdapter(Object bean, String templateLocation, List<MediaType> extensibleMediaTypeList) {
+
+    private List<MediaType> getExtensibleMediaTypeList(EasyExcelProperties easyExcelProperties) {
+        return easyExcelProperties.getConverter()
+                .getMediaTypes()
+                .stream()
+                .map(MediaType::valueOf)
+                .toList();
+    }
+
+    private FileNameGenerator getFileNameGenerator(EasyExcelProperties easyExcelProperties) {
+        FileNameGenerator fileNameGenerator = null;
+        try {
+            Class<?> clazz = Class.forName(easyExcelProperties.getName().getGenerator());
+            Constructor<?> customStrategy = clazz.getConstructor();
+            fileNameGenerator = (FileNameGenerator) customStrategy.newInstance();
+        } catch (Exception ex) {
+            ReflectionUtils.handleReflectionException(ex);
+        }
+        return fileNameGenerator;
+    }
+
+    private RequestMappingHandlerAdapter doCustomizeRequestMappingHandlerAdapter(Object bean, String templateLocation,
+                                                                                 List<MediaType> extensibleMediaTypeList,
+                                                                                 FileNameGenerator fileNameGenerator) {
         RequestMappingHandlerAdapter requestMappingHandlerAdapter = (RequestMappingHandlerAdapter) bean;
         List<HandlerMethodArgumentResolver> argumentResolvers = requestMappingHandlerAdapter.getArgumentResolvers();
         List<HandlerMethodReturnValueHandler> returnValueHandlers = requestMappingHandlerAdapter.getReturnValueHandlers();
@@ -79,7 +108,7 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
         ExcelHttpMessageConverter excelHttpMessageConverter =
                 new ExcelHttpMessageConverter(resourceLoader, templateLocation, supportedMediaTypes);
         RequestResponseExcelMethodProcessor requestResponseExcelMethodProcessor
-                = new RequestResponseExcelMethodProcessor(List.of(excelHttpMessageConverter));
+                = new RequestResponseExcelMethodProcessor(List.of(excelHttpMessageConverter), fileNameGenerator);
 
         List<HandlerMethodArgumentResolver> copyArgumentResolvers = new ArrayList<>(argumentResolvers);
         copyArgumentResolvers.add(0, requestResponseExcelMethodProcessor);
@@ -92,11 +121,4 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
         return requestMappingHandlerAdapter;
     }
 
-    private List<MediaType> getExtensibleMediaTypeList(EasyExcelProperties easyExcelProperties) {
-        return easyExcelProperties.getConverter()
-                .getMediaTypes()
-                .stream()
-                .map(MediaType::valueOf)
-                .toList();
-    }
 }

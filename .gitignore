@@ -41,3 +41,6 @@ buildNumber.properties
 *.iws
 *.iml
 *.ipr
+
+# Fast Request
+.fastRequest

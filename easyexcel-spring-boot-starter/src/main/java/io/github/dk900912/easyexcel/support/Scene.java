@@ -6,12 +6,12 @@ package io.github.dk900912.easyexcel.support;
 public enum Scene {
 
     /**
-     * export normal file
+     * Export normal file
      */
     NORMAL,
 
     /**
-     * export template file
+     * Export template file
      */
     TEMPLATE
 }

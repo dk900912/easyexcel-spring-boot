@@ -22,9 +22,12 @@ public class ExcelHttpOutputMessage implements HttpOutputMessage {
 
     private final HttpServletResponse servletResponse;
 
-    public ExcelHttpOutputMessage(HttpServletResponse servletResponse, MethodParameter parameter) {
+    private final FileNameGenerator fileNameGenerator;
+
+    public ExcelHttpOutputMessage(HttpServletResponse servletResponse, MethodParameter parameter, FileNameGenerator fileNameGenerator) {
         this.parameter = parameter;
         this.servletResponse = servletResponse;
+        this.fileNameGenerator = fileNameGenerator;
     }
 
     public MethodParameter getParameter() {
@@ -36,7 +39,7 @@ public class ExcelHttpOutputMessage implements HttpOutputMessage {
     }
 
     public ResponseExcelInfo getResponseExcelInfo() {
-        return new ResponseExcelInfo(parameter.getMethodAnnotation(ResponseExcel.class));
+        return new ResponseExcelInfo(parameter.getMethodAnnotation(ResponseExcel.class), fileNameGenerator);
     }
 
     public List<WriteSheet> getWriteSheets() {

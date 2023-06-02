@@ -14,36 +14,31 @@ import static io.github.dk900912.easyexcel.support.Scene.NORMAL;
 /**
  * @author dukui
  */
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface ResponseExcel {
 
     /**
-     * The name of the exported excel.
-     *
-     * @return The name of the exported excel
+     * The name of the exported file.
+     * <p>In general, exporting files with UUID naming strategy is used by
+     * default in normal mode without explicitly specifying the exported file name.
      */
-    String name();
+    String name() default "";
 
     /**
-     * The format of the exported excel.
-     *
-     * @return The format of the exported excel
+     * The format of the exported file.
      */
     ExcelTypeEnum suffix() default ExcelTypeEnum.XLSX;
 
     /**
-     * The sheet array of the exported excel.
-     *
-     * @return The sheet array of the exported excel
+     * The sheet array of the exported file.
      */
     Sheet[] sheets() default {};
 
     /**
      * The exporting scene.
-     *
-     * @return The exporting scene
+     * <p>Default is {@code NORMAL}.
      */
     Scene scene() default NORMAL;
 }

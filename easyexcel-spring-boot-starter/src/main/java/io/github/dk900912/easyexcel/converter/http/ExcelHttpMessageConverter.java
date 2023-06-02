@@ -32,6 +32,11 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static com.alibaba.excel.support.ExcelTypeEnum.CSV;
+import static io.github.dk900912.easyexcel.support.Constants.APPLICATION_OCTET_STREAM;
+import static io.github.dk900912.easyexcel.support.Constants.APPLICATION_VND_EXCEL;
+import static io.github.dk900912.easyexcel.support.Constants.APPLICATION_VND_OFFICE_DOC;
+import static io.github.dk900912.easyexcel.support.Constants.MULTIPART_FORM_DATA;
+import static io.github.dk900912.easyexcel.support.Constants.TEXT_CSV;
 import static io.github.dk900912.easyexcel.support.Scene.TEMPLATE;
 
 /**
@@ -44,11 +49,11 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
     private final String templateLocation;
 
     private static final MediaType[] DEFAULT_MEDIATYPE = new MediaType[]{
-            MediaType.valueOf("application/octet-stream"),
-            MediaType.valueOf("application/vnd.ms-excel"),
-            MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-            MediaType.valueOf("multipart/form-data"),
-            MediaType.valueOf("text/csv")
+            MediaType.valueOf(APPLICATION_OCTET_STREAM),
+            MediaType.valueOf(MULTIPART_FORM_DATA),
+            MediaType.valueOf(APPLICATION_VND_EXCEL),
+            MediaType.valueOf(APPLICATION_VND_OFFICE_DOC),
+            MediaType.valueOf(TEXT_CSV)
     };
 
     public ExcelHttpMessageConverter(ResourceLoader resourceLoader, String templateLocation, MediaType... mediaTypes) {

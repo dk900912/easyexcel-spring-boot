@@ -15,15 +15,13 @@ import java.lang.annotation.Target;
 public @interface RequestExcel {
 
     /**
-     * Whether excel file is required.
+     * Whether the file is required.
      * <p>Default is {@code true}.
      */
     boolean required() default true;
 
     /**
-     * The sheet array of the uploaded excel.
-     *
-     * @return The sheet array of the uploaded excel
+     * The sheet array of the uploaded file.
      */
     Sheet[] sheets();
 }

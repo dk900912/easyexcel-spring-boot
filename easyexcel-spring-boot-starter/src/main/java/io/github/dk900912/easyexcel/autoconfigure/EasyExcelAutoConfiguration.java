@@ -1,7 +1,6 @@
 package io.github.dk900912.easyexcel.autoconfigure;
 
 import com.alibaba.excel.EasyExcelFactory;
-import io.github.dk900912.easyexcel.support.RequestMappingHandlerAdapterCustomizer;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
