@@ -2,14 +2,10 @@ package io.github.dk900912.easyexcel.model;
 
 import com.alibaba.excel.support.ExcelTypeEnum;
 import io.github.dk900912.easyexcel.annotation.ResponseExcel;
-import io.github.dk900912.easyexcel.support.FileNameGenerator;
 import io.github.dk900912.easyexcel.support.Scene;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.stream.Stream;
-
-import static io.github.dk900912.easyexcel.support.Scene.NORMAL;
 
 /**
  * @author dukui
@@ -24,17 +20,13 @@ public class ResponseExcelInfo {
 
     private Scene scene;
 
-    public ResponseExcelInfo(ResponseExcel responseExcel, FileNameGenerator fileNameGenerator) {
+    public ResponseExcelInfo(ResponseExcel responseExcel) {
         this.suffix = responseExcel.suffix();
         this.sheetInfoList = Stream.of(responseExcel.sheets())
                 .map(SheetInfo::new)
                 .toList();
         this.scene = responseExcel.scene();
-        if (NORMAL == scene) {
-            this.name = StringUtils.isEmpty(responseExcel.name()) ? fileNameGenerator.generateBeanName() : responseExcel.name();
-        } else {
-            this.name = responseExcel.name();
-        }
+        this.name = responseExcel.name();
     }
 
     public String getName() {

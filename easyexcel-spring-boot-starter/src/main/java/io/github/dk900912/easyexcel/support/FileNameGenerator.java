@@ -7,6 +7,6 @@ package io.github.dk900912.easyexcel.support;
  */
 public interface FileNameGenerator {
 
-    String generateBeanName();
+    String generateFileName();
 
 }

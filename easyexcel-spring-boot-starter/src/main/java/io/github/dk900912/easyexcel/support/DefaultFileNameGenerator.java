@@ -6,10 +6,8 @@ import java.util.UUID;
  * @author dukui
  */
 public class DefaultFileNameGenerator implements FileNameGenerator {
-
     @Override
-    public String generateBeanName() {
+    public String generateFileName() {
         return UUID.randomUUID().toString();
     }
-
 }

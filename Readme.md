@@ -17,7 +17,8 @@
     * [1.1 引入依赖](#11-引入依赖)
     * [1.2 导入与导出](#12-导入与导出)
   * [2 配置项](#2-配置项)
-  * [3 Bean Validation](#3-bean-validation)
+  * [3 导出文件名](#3-导出文件名)
+  * [4 Bean Validation](#4-bean-validation)
 <!-- TOC -->
 
 EasyExcel 是一款由阿里开源的 Excel 处理工具。相较于原生的`Apache POI`，它可以更优雅、快速地完成 Excel 的读写功能，同时更加地节约内存。即使 EasyExcel 已经很优雅了，但面向 Excel 文档的读写逻辑几乎千篇一律，笔者索性将这些模板化的逻辑抽离出来，该组件已经发布到 maven 中央仓库，感兴趣的朋友可以体验一下。
@@ -26,12 +27,12 @@ EasyExcel 是一款由阿里开源的 Excel 处理工具。相较于原生的`Ap
 
 ## 1 快速上手
 ### 1.1 引入依赖
-> easyexcel 组件组要自行引入，强制使用 3.3+ 版本。
+> **easyexcel 组件组要自行引入，强制使用 3.3+ 版本。**
 ```xml
 <dependency>
 	<groupId>io.github.dk900912</groupId>
 	<artifactId>easyexcel-spring-boot-starter</artifactId>
-	<version>0.0.9</version>
+	<version>1.0.1</version>
 </dependency>
 ```
 ### 1.2 导入与导出
@@ -128,8 +129,13 @@ spring.easy-excel.template.location=classpath:
 在非模板导出场景下，导出文件名可以显式指定，也可以不指定，此时会默认使用基于 UUID 的文件名生成策略，如果不满足大家的需求，可以自行实现`FileNameGenerator`策略接口，然后追加配置项，如下所示：
 
 ```java
-spring.easy-excel.name.generator=io.github.xiaotou.easyexcel.TimestampFileNameGenerator
+spring.easy-excel.name.generator=a.b.c.CustomFileNameGenerator
 ```
+
+同时内置了两个文件名生成器供大家使用，分别是：
+
+- io.github.dk900912.easyexcel.support.TimestampFileNameGenerator
+- io.github.dk900912.easyexcel.support.LocalDateTimeFileNameGenerator
 
 ## 4 Bean Validation
 
@@ -158,7 +164,7 @@ public class ExcelController {
 
 异常信息如下：
 ```java
-jakarta.validation.ConstraintViolationException: v1upload.users[0].<list element>[0].name: name不能为空
+jakarta.validation.ConstraintViolationException: v1upload.users[1].<list element>[0].name: name不能为空, v1upload.users[0].<list element>[0].name: name不能为空
 	at org.springframework.validation.beanvalidation.MethodValidationInterceptor.invoke(MethodValidationInterceptor.java:138) ~[spring-context-6.0.9.jar:6.0.9]
 	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.0.9.jar:6.0.9]
 	at org.springframework.aop.framework.CglibAopProxy$CglibMethodInvocation.proceed(CglibAopProxy.java:750) ~[spring-aop-6.0.9.jar:6.0.9]
@@ -181,4 +187,18 @@ jakarta.validation.ConstraintViolationException: v1upload.users[0].<list element
 	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590) ~[tomcat-embed-core-10.1.8.jar:6.0]
 	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.0.9.jar:6.0.9]
 	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.8.jar:6.0]
+```
+
+从上述异常信息来看，出现了两次“name不能为空”，这说明 Jakarta Bean Validation 的实现方（Hibernate）没有开启`fail fast`机制，可以通过以下方式开启：
+```
+spring.easy-excel.validation.fail-fast=false
+```
+否则本组件将自动开启`fail fast`机制，如下：
+```java
+public class FailFastValidationConfigurationCustomizer implements ValidationConfigurationCustomizer {
+    @Override
+    public void customize(Configuration<?> configuration) {
+        configuration.addProperty("hibernate.validator.fail_fast", "true");
+    }
+}
 ```

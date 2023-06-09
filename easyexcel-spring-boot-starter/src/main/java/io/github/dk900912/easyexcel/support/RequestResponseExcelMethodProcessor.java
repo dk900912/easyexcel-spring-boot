@@ -41,11 +41,8 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
 
     private final List<HttpMessageConverter<?>> messageConverters;
 
-    private final FileNameGenerator fileNameGenerator;
-
-    public RequestResponseExcelMethodProcessor(List<HttpMessageConverter<?>> messageConverters, FileNameGenerator fileNameGenerator) {
+    public RequestResponseExcelMethodProcessor(List<HttpMessageConverter<?>> messageConverters) {
         this.messageConverters = messageConverters;
-        this.fileNameGenerator = fileNameGenerator;
     }
 
     @Override
@@ -146,7 +143,7 @@ public class RequestResponseExcelMethodProcessor implements HandlerMethodArgumen
     protected ExcelHttpOutputMessage createOutputMessage(NativeWebRequest webRequest, MethodParameter parameter) {
         HttpServletResponse servletResponse = webRequest.getNativeResponse(HttpServletResponse.class);
         Assert.state(servletResponse != null, "No HttpServletResponse");
-        return new ExcelHttpOutputMessage(servletResponse, parameter, fileNameGenerator);
+        return new ExcelHttpOutputMessage(servletResponse, parameter);
     }
 
     protected Object adaptArgumentIfNecessary(@Nullable Object arg, MethodParameter parameter) {

@@ -27,7 +27,8 @@ import java.util.List;
 /**
  * @author dukui
  */
-public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor, PriorityOrdered, ResourceLoaderAware, ApplicationContextAware {
+public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor, PriorityOrdered,
+        ResourceLoaderAware, ApplicationContextAware {
 
     private ResourceLoader resourceLoader;
 
@@ -76,7 +77,6 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
         return easyExcelProperties.getTemplate().getLocation();
     }
 
-
     private List<MediaType> getExtensibleMediaTypeList(EasyExcelProperties easyExcelProperties) {
         return easyExcelProperties.getConverter()
                 .getMediaTypes()
@@ -106,9 +106,9 @@ public class RequestMappingHandlerAdapterCustomizer implements BeanPostProcessor
 
         MediaType[] supportedMediaTypes = CollectionUtils.isEmpty(extensibleMediaTypeList) ? new MediaType[]{} : extensibleMediaTypeList.toArray(new MediaType[]{});
         ExcelHttpMessageConverter excelHttpMessageConverter =
-                new ExcelHttpMessageConverter(resourceLoader, templateLocation, supportedMediaTypes);
+                new ExcelHttpMessageConverter(resourceLoader, templateLocation, fileNameGenerator, supportedMediaTypes);
         RequestResponseExcelMethodProcessor requestResponseExcelMethodProcessor
-                = new RequestResponseExcelMethodProcessor(List.of(excelHttpMessageConverter), fileNameGenerator);
+                = new RequestResponseExcelMethodProcessor(List.of(excelHttpMessageConverter));
 
         List<HandlerMethodArgumentResolver> copyArgumentResolvers = new ArrayList<>(argumentResolvers);
         copyArgumentResolvers.add(0, requestResponseExcelMethodProcessor);

@@ -8,8 +8,10 @@ import io.github.dk900912.easyexcel.model.ResponseExcelInfo;
 import io.github.dk900912.easyexcel.support.Constants;
 import io.github.dk900912.easyexcel.support.ExcelHttpInputMessage;
 import io.github.dk900912.easyexcel.support.ExcelHttpOutputMessage;
+import io.github.dk900912.easyexcel.support.FileNameGenerator;
 import io.github.dk900912.easyexcel.support.SheetDataCollector;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.ResourceLoader;
@@ -37,6 +39,7 @@ import static io.github.dk900912.easyexcel.support.Constants.APPLICATION_VND_EXC
 import static io.github.dk900912.easyexcel.support.Constants.APPLICATION_VND_OFFICE_DOC;
 import static io.github.dk900912.easyexcel.support.Constants.MULTIPART_FORM_DATA;
 import static io.github.dk900912.easyexcel.support.Constants.TEXT_CSV;
+import static io.github.dk900912.easyexcel.support.Scene.NORMAL;
 import static io.github.dk900912.easyexcel.support.Scene.TEMPLATE;
 
 /**
@@ -48,6 +51,8 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
 
     private final String templateLocation;
 
+    private final FileNameGenerator fileNameGenerator;
+
     private static final MediaType[] DEFAULT_MEDIATYPE = new MediaType[]{
             MediaType.valueOf(APPLICATION_OCTET_STREAM),
             MediaType.valueOf(MULTIPART_FORM_DATA),
@@ -56,7 +61,10 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
             MediaType.valueOf(TEXT_CSV)
     };
 
-    public ExcelHttpMessageConverter(ResourceLoader resourceLoader, String templateLocation, MediaType... mediaTypes) {
+    public ExcelHttpMessageConverter(ResourceLoader resourceLoader,
+                                     String templateLocation,
+                                     FileNameGenerator fileNameGenerator,
+                                     MediaType... mediaTypes) {
         super(StandardCharsets.UTF_8,
                 Stream.of(DEFAULT_MEDIATYPE, mediaTypes)
                         .flatMap(Stream::of)
@@ -66,6 +74,7 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
         );
         this.resourceLoader = resourceLoader;
         this.templateLocation = templateLocation;
+        this.fileNameGenerator = fileNameGenerator;
     }
 
     @Override
@@ -93,7 +102,7 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
         ResponseExcelInfo responseExcelInfo = excelHttpOutputMessage.getResponseExcelInfo();
         HttpServletResponse servletResponse = excelHttpOutputMessage.getServletResponse();
         OutputStream outputStream = excelHttpOutputMessage.getBody();
-        final String fileName = responseExcelInfo.getName();
+        final String fileName = shouldGenerateFileName(responseExcelInfo) ? doGenerateFileName() : responseExcelInfo.getName();
         servletResponse.setContentType(Constants.RESPONSE_EXCEL_CONTENT_TYPE);
         servletResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
         if (TEMPLATE.equals(responseExcelInfo.getScene())) {
@@ -111,15 +120,15 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
             servletResponse.setHeader(Constants.RESPONSE_EXCEL_CONTENT_DISPOSITION,
                     Constants.RESPONSE_EXCEL_ATTACHMENT + URLEncoder.encode(
                             fileName, StandardCharsets.UTF_8) + responseExcelInfo.getSuffix().getValue());
+            List<WriteSheet> writeSheetList = excelHttpOutputMessage.getWriteSheets();
+            if (hasRedundantSheet(writeSheetList, data)) {
+                throw new HttpMessageNotWritableException("Redundant @Sheet annotation in @ResponseExcel");
+            }
             if (CSV == responseExcelInfo.getSuffix()) {
                 outputStream.write(new byte[]{(byte) 0xef, (byte) 0xbb, (byte) 0xbf});
             }
             try (ExcelWriter excelWriter = EasyExcelFactory.write(outputStream)
                     .charset(StandardCharsets.UTF_8).excelType(responseExcelInfo.getSuffix()).build()) {
-                List<WriteSheet> writeSheetList = excelHttpOutputMessage.getWriteSheets();
-                if (writeSheetList.size() > data.size()) {
-                    throw new HttpMessageNotWritableException("Redundant @Sheet annotation in @ResponseExcel");
-                }
                 for (int i = 0; i < writeSheetList.size(); i++) {
                     WriteSheet writeSheet = writeSheetList.get(i);
                     List<Object> singleSheetData = data.get(i);
@@ -140,4 +149,18 @@ public class ExcelHttpMessageConverter extends AbstractHttpMessageConverter<List
                 .map(List.class::isAssignableFrom)
                 .orElse(false);
     }
+
+    private boolean shouldGenerateFileName(ResponseExcelInfo responseExcelInfo) {
+        return NORMAL == responseExcelInfo.getScene()
+                && StringUtils.isEmpty(responseExcelInfo.getName());
+    }
+
+    private String doGenerateFileName() {
+        return fileNameGenerator.generateFileName();
+    }
+
+    private boolean hasRedundantSheet(List<WriteSheet> writeSheetList, List<List<Object>> data) {
+        return writeSheetList.size() > data.size();
+    }
+
 }

@@ -23,4 +23,6 @@ public class Constants {
 
     public static final String RESPONSE_EXCEL_ATTACHMENT = "attachment;filename=";
 
+    public static final String DEFAULT_FILE_NAME_GENERATOR = "io.github.dk900912.easyexcel.support.DefaultFileNameGenerator";
+
 }

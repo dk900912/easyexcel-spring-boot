@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.github.dk900912.easyexcel.support.Constants.DEFAULT_FILE_NAME_GENERATOR;
 import static org.springframework.core.io.ResourceLoader.CLASSPATH_URL_PREFIX;
 
 /**
@@ -26,6 +27,9 @@ public class EasyExcelProperties {
 
     @NestedConfigurationProperty
     private Converter converter = new Converter();
+
+    @NestedConfigurationProperty
+    private Validation validation = new Validation();
 
     public Boolean getEnabled() {
         return enabled;
@@ -59,9 +63,17 @@ public class EasyExcelProperties {
         this.converter = converter;
     }
 
+    public Validation getValidation() {
+        return validation;
+    }
+
+    public void setValidation(Validation validation) {
+        this.validation = validation;
+    }
+
     public static class Name {
 
-        private String generator = "io.github.dk900912.easyexcel.support.DefaultFileNameGenerator";
+        private String generator = DEFAULT_FILE_NAME_GENERATOR;
 
         public String getGenerator() {
             return generator;
@@ -97,4 +109,18 @@ public class EasyExcelProperties {
             this.mediaTypes = mediaTypes;
         }
     }
+
+    public static class Validation {
+
+        private Boolean failFast = true;
+
+        public Boolean getFailFast() {
+            return failFast;
+        }
+
+        public void setFailFast(Boolean failFast) {
+            this.failFast = failFast;
+        }
+    }
+
 }

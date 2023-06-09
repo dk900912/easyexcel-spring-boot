@@ -41,7 +41,7 @@ public class ExcelHttpInputMessage implements HttpInputMessage {
     public List<ReadSheet> getReadSheets(SheetDataCollector sheetDataCollector) {
         RequestExcelInfo requestExcelInfo =
                 new RequestExcelInfo(parameter.getParameterAnnotation(RequestExcel.class));
-        return  requestExcelInfo.getSheetInfoList()
+        return requestExcelInfo.getSheetInfoList()
                 .stream()
                 .map(sheetInfo -> EasyExcelFactory.readSheet(sheetInfo.getIndex())
                         .head(sheetInfo.getHeadClazz())

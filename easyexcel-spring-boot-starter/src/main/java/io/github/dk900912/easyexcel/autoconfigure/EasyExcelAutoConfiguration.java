@@ -1,6 +1,7 @@
 package io.github.dk900912.easyexcel.autoconfigure;
 
 import com.alibaba.excel.EasyExcelFactory;
+import io.github.dk900912.easyexcel.validation.FailFastValidationConfigurationCustomizer;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,6 +25,13 @@ public class EasyExcelAutoConfiguration {
     @Bean
     public RequestMappingHandlerAdapterCustomizer requestMappingHandlerAdapterPostCustomizer() {
         return new RequestMappingHandlerAdapterCustomizer();
+    }
+
+    @ConditionalOnProperty(prefix = EASY_EXCEL_PREFIX, name = "validation.fail-fast",
+            havingValue = "true", matchIfMissing = true)
+    @Bean
+    public FailFastValidationConfigurationCustomizer failFastValidationConfigurationCustomizer() {
+        return new FailFastValidationConfigurationCustomizer();
     }
 
 }
